@@ -2,8 +2,16 @@ services:
   - type: web
     name: deepfake-detector
     runtime: python
-    buildCommand: "pip install -r requirements.txt"
+    python:
+      version: "3.10"
+    buildCommand: |
+      pip install -r requirements.txt
+      python -c "import torch; print(torch.__version__)"  # Verify Torch install
     startCommand: "gunicorn --workers 1 --threads 2 --bind 0.0.0.0:$PORT app:app"
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.10"
+      - key: PORT
+        value: "10000"  # Override if needed
+    disk:
+      name: model_storage
+      mountPath: /opt/render/project/src/models/
+      sizeGB: 1
