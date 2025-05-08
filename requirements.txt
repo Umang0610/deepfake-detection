@@ -1,8 +1,8 @@
 Flask==3.0.3
+bottle
 torch==2.7.0
 torchvision==0.22.0
 tensorflow==2.18.0
-tensorflow_intel==2.18.0 
 numpy==1.26.4
 opencv-python==4.11.0.86
 librosa==0.11.0
@@ -11,4 +11,5 @@ soundfile==0.13.1
 gunicorn==21.2.0  
 protobuf==4.25.3  
 h5py==3.10.0  
-Werkzeug==3.0.1  
+Werkzeug==3.0.1 
+ffmpeg 
