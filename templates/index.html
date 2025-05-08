@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deepfake Detection Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Deepfake Detection Dashboard</h1>
+
+    <div class="detector-container">
+        <!-- Image Detection Section -->
+        <div class="detector-section">
+            <h2>Image Detection</h2>
+            <div class="card">
+                <h3>Upload Image</h3>
+                <div class="input-container">
+                    <label for="imageInput" class="custom-file-upload">Choose Image</label>
+                    <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
+                    <div id="imageFileInfo" class="file-info"></div>
+                </div>
+                <img id="imagePreview" style="display: none; max-width: 100%;">
+                <button onclick="predictImage()">Detect Deepfake</button>
+                <div class="spinner" id="imageSpinner"></div>
+                <div id="imageResult"></div>
+            </div>
+        </div>
+
+        <!-- Audio Detection Section -->
+        <div class="detector-section">
+            <h2>Audio Detection</h2>
+            <div class="card">
+                <h3>Upload Audio</h3>
+                <div class="input-container">
+                    <label for="audioInput" class="custom-file-upload">Choose Audio File</label>
+                    <input type="file" id="audioInput" accept="audio/*" onchange="previewAudio(event)">
+                    <div id="audioFileInfo" class="file-info"></div>
+                </div>
+                <audio id="audioPreview" controls style="display: none; width: 100%;"></audio>
+                <button onclick="predictAudio()">Detect Deepfake</button>
+                <div class="spinner" id="audioSpinner"></div>
+                <div id="audioResult"></div>
+            </div>
+        </div>
+
+        <!-- Video Detection Section -->
+        <div class="detector-section">
+            <h2>Video Detection</h2>
+            <div class="card">
+                <h3>Upload Video</h3>
+                <div class="input-container">
+                    <label for="videoInput" class="custom-file-upload">Choose Video</label>
+                    <input type="file" id="videoInput" accept="video/*" onchange="previewVideo(event)">
+                    <div id="videoFileInfo" class="file-info"></div>
+                </div>
+                <video id="videoPreview" controls style="display: none; max-width: 100%;"></video>
+                <button onclick="predictVideo()">Detect Deepfake</button>
+                <div class="spinner" id="videoSpinner"></div>
+                <div id="videoResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</body>
+</html>
