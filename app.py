@@ -33,7 +33,7 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)  # Changed to DEBUG for detailed logs
 logger = logging.getLogger(__name__)
-
+logger.info(f"Contents of MODELS_DIR ({MODELS_DIR}): {os.listdir(MODELS_DIR)}")
 # Parameters (further optimized)
 N_MFCC = 13
 MAX_TIME_STEPS = 400  # Reduced from 862
