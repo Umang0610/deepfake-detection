@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+venv/
+*.log
+*.tflite
+*.h5
+*.pth
+.DS_Store 
