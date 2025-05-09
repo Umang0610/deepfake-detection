@@ -1,4 +1,4 @@
-# app.py - Deepfake Detection Flask App for Railway
+# app.py - Deepfake Detection Flask App with Memory Optimizations
 import os
 import numpy as np
 import torch
@@ -14,15 +14,20 @@ from pydub import AudioSegment
 import io
 import logging
 import tempfile
-from threading import Thread
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-# ========== CONFIGURATION FOR RAILWAY ==========
+# Memory optimization settings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Reduce TensorFlow logging
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU
+os.environ['OMP_NUM_THREADS'] = '1'  # Limit OpenMP threads
+os.environ['TF_NUM_INTEROP_THREADS'] = '1'  # Limit TF threads
+os.environ['TF_NUM_INTRAOP_THREADS'] = '1'  # Limit TF threads
+
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Configure for Railway environment
-PORT = int(os.environ.get("PORT", 5000))
-MODELS_DIR = os.path.join(os.getcwd(), "models")
+# Configure for Render environment
+PORT = int(os.environ.get("PORT", 10000))
+MODELS_DIR = "/opt/render/project/src/models"  # Absolute path for Render
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 # Set up logging
@@ -37,7 +42,102 @@ IMG_SIZE = 224
 MAX_SEQ_LENGTH = 20
 NUM_FEATURES = 2048
 
-# ========== MODEL LOADING (OPTIMIZED FOR RAILWAY) ==========
+# ========== LAZY LOADING IMPLEMENTATION ==========
+class ModelManager:
+    def __init__(self):
+        self.models = {
+            'audio_model': None,
+            'image_model': None,
+            'video_model': None,
+            'feature_extractor': None,
+            'image_device': None,
+            'label_mapping': None
+        }
+        self.loaded = False
+    
+    def load_image_model(self):
+        if self.models['image_model'] is None:
+            try:
+                image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18.pth")
+                if os.path.exists(image_model_path):
+                    device = torch.device("cpu")  # Force CPU
+                    model = DeepfakeDetector(num_classes=2)
+                    checkpoint = torch.load(image_model_path, map_location=device)
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    model = model.to(device)
+                    model.eval()
+                    self.models['image_model'] = model
+                    self.models['image_device'] = device
+                    self.models['label_mapping'] = checkpoint.get('label_mapping', {'fake': 0, 'real': 1})
+                    logger.info("✅ Image model loaded")
+            except Exception as e:
+                logger.error(f"❌ Image model loading failed: {str(e)}")
+    
+    def load_audio_model(self):
+        if self.models['audio_model'] is None:
+            try:
+                audio_model_path = os.path.join(MODELS_DIR, 'audio_model.h5')
+                if os.path.exists(audio_model_path):
+                    # Reduce TF memory usage
+                    tf.keras.backend.clear_session()
+                    gpus = tf.config.experimental.list_physical_devices('GPU')
+                    if gpus:
+                        try:
+                            tf.config.experimental.set_memory_growth(gpus[0], True)
+                        except RuntimeError:
+                            pass
+                    self.models['audio_model'] = tf.keras.models.load_model(audio_model_path, compile=False)
+                    logger.info("✅ Audio model loaded")
+            except Exception as e:
+                logger.error(f"❌ Audio model loading failed: {str(e)}")
+    
+    def load_video_models(self):
+        if self.models['video_model'] is None:
+            try:
+                video_model_path = os.path.join(MODELS_DIR, "deepfake_video_new.h5")
+                if os.path.exists(video_model_path):
+                    # Reduce TF memory usage
+                    tf.keras.backend.clear_session()
+                    self.models['video_model'] = tf.keras.models.load_model(video_model_path, compile=False)
+                    
+                    # Load feature extractor only when needed
+                    if self.models['feature_extractor'] is None:
+                        self.models['feature_extractor'] = tf.keras.applications.InceptionV3(
+                            weights="imagenet",
+                            include_top=False,
+                            pooling="avg",
+                            input_shape=(IMG_SIZE, IMG_SIZE, 3),
+                        )
+                    logger.info("✅ Video model loaded")
+            except Exception as e:
+                logger.error(f"❌ Video model loading failed: {str(e)}")
+    
+    def unload_models(self):
+        """Unload models to free memory"""
+        if self.models['audio_model'] is not None:
+            del self.models['audio_model']
+            self.models['audio_model'] = None
+            tf.keras.backend.clear_session()
+        
+        if self.models['video_model'] is not None:
+            del self.models['video_model']
+            self.models['video_model'] = None
+            tf.keras.backend.clear_session()
+        
+        if self.models['feature_extractor'] is not None:
+            del self.models['feature_extractor']
+            self.models['feature_extractor'] = None
+        
+        if self.models['image_model'] is not None:
+            del self.models['image_model']
+            self.models['image_model'] = None
+            torch.cuda.empty_cache()
+        
+        logger.info("🔄 Models unloaded to free memory")
+
+# Initialize model manager
+model_manager = ModelManager()
+
 class DeepfakeDetector(nn.Module):
     def __init__(self, num_classes=2):
         super().__init__()
@@ -46,68 +146,6 @@ class DeepfakeDetector(nn.Module):
         
     def forward(self, x):
         return self.base_model(x)
-
-def load_models():
-    """Load all models with error handling"""
-    models = {
-        'audio_model': None,
-        'image_model': None,
-        'video_model': None,
-        'feature_extractor': None
-    }
-    
-    try:
-        # Audio model
-        audio_model_path = os.path.join(MODELS_DIR, 'audio_model.h5')
-        if os.path.exists(audio_model_path):
-            models['audio_model'] = tf.keras.models.load_model(audio_model_path, compile=False)
-            logger.info("✅ Audio model loaded")
-    except Exception as e:
-        logger.error(f"❌ Audio model loading failed: {str(e)}")
-
-    try:
-        # Image model
-        image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18.pth")
-        if os.path.exists(image_model_path):
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            model = DeepfakeDetector(num_classes=2)
-            checkpoint = torch.load(image_model_path, map_location=device)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            model = model.to(device)
-            model.eval()
-            models['image_model'] = model
-            models['image_device'] = device
-            models['label_mapping'] = checkpoint.get('label_mapping', {'fake': 0, 'real': 1})
-            logger.info("✅ Image model loaded")
-    except Exception as e:
-        logger.error(f"❌ Image model loading failed: {str(e)}")
-
-    try:
-        # Video model
-        video_model_path = os.path.join(MODELS_DIR, "deepfake_video_new.h5")
-        if os.path.exists(video_model_path):
-            models['video_model'] = tf.keras.models.load_model(video_model_path, compile=False)
-            logger.info("✅ Video model loaded")
-            
-            # Feature extractor
-            feature_extractor = tf.keras.applications.InceptionV3(
-                weights="imagenet",
-                include_top=False,
-                pooling="avg",
-                input_shape=(IMG_SIZE, IMG_SIZE, 3),
-            )
-            preprocess_input = tf.keras.applications.inception_v3.preprocess_input
-            inputs = tf.keras.Input((IMG_SIZE, IMG_SIZE, 3))
-            preprocessed = preprocess_input(inputs)
-            outputs = feature_extractor(preprocessed)
-            models['feature_extractor'] = tf.keras.Model(inputs, outputs, name="feature_extractor")
-    except Exception as e:
-        logger.error(f"❌ Video model loading failed: {str(e)}")
-
-    return models
-
-# Load models at startup
-models = load_models()
 
 # ========== PROCESSING FUNCTIONS ==========
 def preprocess_audio(audio_bytes):
@@ -169,7 +207,7 @@ def prepare_single_video(frames):
         video_length = batch.shape[0]
         length = min(MAX_SEQ_LENGTH, video_length)
         for j in range(length):
-            frame_features[i, j, :] = models['feature_extractor'].predict(batch[None, j, :])
+            frame_features[i, j, :] = model_manager.models['feature_extractor'].predict(batch[None, j, :])
         frame_mask[i, :length] = 1
     return frame_features, frame_mask
 
@@ -195,18 +233,22 @@ def predict_image():
         return jsonify({"error": "File too large"}), 400
         
     try:
-        if models['image_model'] is None:
+        model_manager.load_image_model()
+        if model_manager.models['image_model'] is None:
             return jsonify({"error": "Image model not available"}), 503
             
         image = Image.open(file.stream).convert('RGB')
-        image = image_transform(image).unsqueeze(0).to(models['image_device'])
+        image = image_transform(image).unsqueeze(0).to(model_manager.models['image_device'])
         
         with torch.no_grad():
-            output = models['image_model'](image)
+            output = model_manager.models['image_model'](image)
             probabilities = torch.nn.functional.softmax(output, dim=1)
             confidence, pred = torch.max(probabilities, dim=1)
             
         result = "Deepfake" if pred[0].item() == 0 else "Real"
+        
+        # Unload models after prediction
+        model_manager.unload_models()
         
         return jsonify({
             "result": result,
@@ -227,15 +269,19 @@ def predict_audio():
         return jsonify({"error": "File too large"}), 400
         
     try:
-        if models['audio_model'] is None:
+        model_manager.load_audio_model()
+        if model_manager.models['audio_model'] is None:
             return jsonify({"error": "Audio model not available"}), 503
             
         mfccs = preprocess_audio(file.read())
         mfccs = np.expand_dims(mfccs, axis=0)
         
-        prediction = models['audio_model'].predict(mfccs, verbose=0)
+        prediction = model_manager.models['audio_model'].predict(mfccs, verbose=0)
         predicted_class = np.argmax(prediction, axis=1)[0]
         confidence = float(prediction[0, predicted_class])
+        
+        # Unload models after prediction
+        model_manager.unload_models()
         
         return jsonify({
             "result": "Deepfake" if predicted_class == 1 else "Real",
@@ -264,7 +310,8 @@ def predict_video():
         file.save(temp_path)
         
         try:
-            if models['video_model'] is None or models['feature_extractor'] is None:
+            model_manager.load_video_models()
+            if model_manager.models['video_model'] is None or model_manager.models['feature_extractor'] is None:
                 return jsonify({
                     "result": "Real",
                     "confidence": 0.5,
@@ -275,9 +322,12 @@ def predict_video():
             frames = load_video(temp_path)
             frame_features, frame_mask = prepare_single_video(frames)
             
-            prediction = models['video_model'].predict([frame_features, frame_mask])[0]
+            prediction = model_manager.models['video_model'].predict([frame_features, frame_mask])[0]
             prediction = float(prediction.item())
             predicted_label = "Deepfake" if prediction >= 0.5 else "Real"
+            
+            # Unload models after prediction
+            model_manager.unload_models()
             
             return jsonify({
                 "result": predicted_label,
@@ -291,19 +341,17 @@ def predict_video():
         logger.error(f"Video prediction error: {str(e)}")
         return jsonify({"error": f"Video processing failed: {str(e)}"}), 500
 
-# ========== HEALTH CHECK ==========
 @app.route('/health')
 def health_check():
     return jsonify({
         "status": "OK",
         "models_loaded": {
-            "audio": models['audio_model'] is not None,
-            "image": models['image_model'] is not None,
-            "video": models['video_model'] is not None
+            "audio": model_manager.models['audio_model'] is not None,
+            "image": model_manager.models['image_model'] is not None,
+            "video": model_manager.models['video_model'] is not None
         }
     })
 
-# ========== START SERVER ==========
 if __name__ == '__main__':
     logger.info(f"🚀 Starting Deepfake Detection App on port {PORT}")
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    app.run(host='0.0.0.0', port=PORT)
