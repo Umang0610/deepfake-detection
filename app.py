@@ -56,7 +56,7 @@ class ModelManager:
         self.loaded = False
     
     def load_image_model(self):
-        if self.models['image_model'] is None:
+        if not self.loaded['image']:
             try:
                 image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18_quantized.pth")
                 if not os.path.exists(image_model_path):
@@ -65,16 +65,21 @@ class ModelManager:
                 device = torch.device("cpu")
                 model = DeepfakeDetector(num_classes=2)
                 checkpoint = torch.load(image_model_path, map_location=device)
-                model.load_state_dict(checkpoint['model_state_dict'])
+                # Check if checkpoint is a state dict or the entire model
+                if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                else:
+                    # Assume the checkpoint is the entire model
+                    model = checkpoint
                 model = model.to(device)
                 model.eval()
                 self.models['image_model'] = model
                 self.models['image_device'] = device
-                self.models['label_mapping'] = checkpoint.get('label_mapping', {'fake': 0, 'real': 1})
+                self.models['label_mapping'] = {'fake': 0, 'real': 1}
+                self.loaded['image'] = True
                 logger.info("✅ Image model loaded")
             except Exception as e:
                 logger.error(f"❌ Image model loading failed: {str(e)}", exc_info=True)
-    
     def load_audio_model(self):
         if self.models['audio_model'] is None:
             try:
