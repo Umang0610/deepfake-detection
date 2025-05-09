@@ -58,7 +58,7 @@ class ModelManager:
     def load_image_model(self):
         if self.models['image_model'] is None:
             try:
-                image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18.pth")
+                image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18_quantized.pth")
                 if not os.path.exists(image_model_path):
                     logger.error(f"Image model file not found: {image_model_path}")
                     return
