@@ -1,5 +1,8 @@
-__pycache__
+models/
+.git/
+__pycache__/
 *.pyc
-.git
-.gitignore
-*.md
+*.pyo
+*.pyd
+.DS_Store
+.env

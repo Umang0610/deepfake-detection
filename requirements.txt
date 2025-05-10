@@ -1,10 +1,19 @@
 Flask==3.0.3
+gunicorn==21.2.0
+
+# Core ML
+tensorflow-cpu==2.18.0
 torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
 torchvision==0.17.0 --index-url https://download.pytorch.org/whl/cpu
-tensorflow-cpu==2.18.0
-numpy==1.26.4
+
+# Image/Audio/Video Processing
 opencv-python-headless==4.8.0.76
 librosa==0.11.0
 pydub==0.25.1
 soundfile==0.12.1
-gunicorn==21.2.0
+python-ffmpeg==1.0.17
+ffmpeg-python==0.2.0
+
+# Utilities
+numpy==1.26.4
+pillow==10.2.0

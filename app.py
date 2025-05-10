@@ -27,7 +27,7 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # Configure for Render environment
 PORT = int(os.environ.get("PORT", 10000))
-MODELS_DIR = "/opt/render/project/src/models"
+MODELS_DIR = "models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 # Set up logging
@@ -58,7 +58,7 @@ class ModelManager:
     def load_image_model(self):
         if not self.loaded['image']:
             try:
-                image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18_quantized.pth")
+                image_model_path = os.path.join(MODELS_DIR, "best_deepfake_detector_resnet18.pth")
                 if not os.path.exists(image_model_path):
                     logger.error(f"Image model file not found: {image_model_path}")
                     return
@@ -83,7 +83,7 @@ class ModelManager:
     def load_audio_model(self):
         if self.models['audio_model'] is None:
             try:
-                audio_model_path = os.path.join(MODELS_DIR, 'audio_model.tflite')  # Use TFLite
+                audio_model_path = os.path.join(MODELS_DIR, 'audio_model.h5')  # Use TFLite
                 if not os.path.exists(audio_model_path):
                     logger.error(f"Audio model file not found: {audio_model_path}")
                     return
@@ -97,7 +97,7 @@ class ModelManager:
     def load_video_models(self):
         if self.models['video_model'] is None:
             try:
-                video_model_path = os.path.join(MODELS_DIR, "deepfake_video_new.tflite")  # Use TFLite
+                video_model_path = os.path.join(MODELS_DIR, "deepfake_video_new.h5")  # Use TFLite
                 if not os.path.exists(video_model_path):
                     logger.error(f"Video model file not found: {video_model_path}")
                     return
