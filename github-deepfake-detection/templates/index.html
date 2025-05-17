@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deepfake Detection Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=2">
+</head>
+<body>
+    <h1>Deepfake Detection Dashboard</h1>
+
+    <div class="detector-container">
+        <!-- Image Detection Section -->
+        <div class="detector-section">
+            <h2>Image Detection</h2>
+            <div class="card">
+                <h3>Upload Image</h3>
+                <div class="input-container">
+                    <label for="imageInput" class="custom-file-upload">Choose Image</label>
+                    <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
+                    <div id="imageFileInfo" class="file-info"></div>
+                </div>
+                <img id="imagePreview" style="display: none; max-width: 100%;">
+                <button onclick="predictImage()">Detect Deepfake</button>
+                <div class="spinner" id="imageSpinner"></div>
+                <div id="imageResult"></div>
+            </div>
+        </div>
+
+        <!-- Audio Detection Section -->
+        <div class="detector-section">
+            <h2>Audio Detection</h2>
+            <div class="card">
+                <h3>Upload Audio</h3>
+                <div class="input-container">
+                    <label for="audioInput" class="custom-file-upload">Choose Audio File</label>
+                    <input type="file" id="audioInput" accept="audio/*" onchange="previewAudio(event)">
+                    <div id="audioFileInfo" class="file-info"></div>
+                </div>
+                <audio id="audioPreview" controls style="display: none; width: 100%;"></audio>
+                <button onclick="predictAudio()">Detect Deepfake</button>
+                <div class="spinner" id="audioSpinner"></div>
+                <div id="audioResult"></div>
+            </div>
+        </div>
+
+        <!-- Video Detection Section -->
+        <div class="detector-section">
+            <h2>Video Detection</h2>
+            <div class="card">
+                <h3>Upload Video</h3>
+                <div class="input-container">
+                    <label for="videoInput" class="custom-file-upload">Choose Video</label>
+                    <input type="file" id="videoInput" accept="video/*" onchange="previewVideo(event)">
+                    <div id="videoFileInfo" class="file-info"></div>
+                </div>
+                <video id="videoPreview" controls style="display: none; max-width: 100%;"></video>
+                <button onclick="predictVideo()">Detect Deepfake</button>
+                <div class="spinner" id="videoSpinner"></div>
+                <div id="videoResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="how-it-works">
+        <h2>How Deepfake Detection Works</h2>
+        <details class="dropdown">
+            <summary>How Images Are Detected</summary>
+            <div class="dropdown-content">
+                <p>We use advanced technology to check if an image is real or a deepfake. Here’s how it works in simple steps, along with details about the tools we use and how we calculate the confidence score:</p>
+                <ol>
+                    <li><strong>Upload Your Image</strong>: You select a photo and upload it to our system.</li>
+                    <li><strong>Image Preparation</strong>: The image is resized to a standard size (128x128 pixels) and adjusted to match the format our system expects, like balancing colors and brightness.</li>
+                    <li><strong>Smart Analysis with ResNet18 and PyTorch</strong>: 
+                        <ul>
+                            <li><strong>ResNet18</strong>: This is a powerful artificial intelligence model, like a super-smart detective, designed to recognize patterns in images. It’s called a "convolutional neural network" (CNN), which means it breaks the image into small pieces, looks for tiny details (like edges or textures), and builds a big picture to decide if something looks off.</li>
+                            <li><strong>PyTorch</strong>: This is the software framework we use to run ResNet18. Think of it as the engine that powers the detective, helping it process the image quickly and efficiently, whether on a regular computer or a powerful graphics card (GPU).</li>
+                            <li><strong>What It Looks For</strong>: ResNet18 checks for signs of tampering, like unnatural blending of faces, inconsistent lighting, or pixel-level glitches that deepfakes often leave behind.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Decision Time</strong>: ResNet18 gives two scores: one for "Real" and one for "Deepfake." We use a mathematical trick called "softmax" to turn these scores into percentages that add up to 100%. The higher percentage becomes the confidence score, telling you how sure the system is of its decision.</li>
+                    <li><strong>Result</strong>: You see the result as "Real" (in green) or "Deepfake" (in red), along with the confidence percentage (e.g., 85%). A high confidence (like 90%) means the system is very sure, while a lower confidence (like 60%) means it’s less certain.</li>
+                </ol>
+            </div>
+        </details>
+        <details class="dropdown">
+            <summary>How Audio Is Detected</summary>
+            <div class="dropdown-content">
+                <p>Our system listens to audio files to figure out if they’re real or fake. Here’s the step-by-step process, including the technologies involved and how we determine the confidence score:</p>
+                <ol>
+                    <li><strong>Upload Your Audio</strong>: You upload an audio file, like a voice recording or music clip.</li>
+                    <li><strong>Audio Processing with MFCC</strong>: 
+                        <ul>
+                            <li><strong>MFCC (Mel-Frequency Cepstral Coefficients)</strong>: We transform the audio into a special format called MFCC, which is like a unique fingerprint of the sound. It captures how the sound’s pitch and tone change over time, making it easier to spot artificial patterns.</li>
+                            <li><strong>Preparation</strong>: The audio is converted to a single channel (mono) and standardized to a specific speed (sampling rate) to ensure consistency.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Analysis with TensorFlow</strong>: 
+                        <ul>
+                            <li><strong>TensorFlow</strong>: This is another powerful software framework, like a high-tech lab, that runs our audio analysis model. It’s great at handling complex math and processing audio data efficiently.</li>
+                            <li><strong>Neural Network</strong>: We use a neural network (a type of AI) trained to recognize differences between real voices and deepfake voices. It looks for odd patterns in the MFCC fingerprint, like unnatural pauses or robotic tones that deepfake software might create.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Classification</strong>: The neural network outputs two scores: one for "Real" and one for "Deepfake." Similar to images, we use a softmax function to convert these into percentages. The highest percentage is the confidence score, showing how certain the system is.</li>
+                    <li><strong>Result</strong>: You get the result as "Real" (green) or "Deepfake" (red), with a confidence percentage. For example, a 95% confidence means the system is very confident, while 55% means it’s less sure.</li>
+                </ol>
+            </div>
+        </details>
+        <details class="dropdown">
+            <summary>How Videos Are Detected</summary>
+            <div class="dropdown-content">
+                <p>We analyze videos to spot deepfakes by checking each frame. Here’s the detailed process, including the technologies used and how the confidence score is calculated:</p>
+                <ol>
+                    <li><strong>Upload Your Video</strong>: You upload a video file, like an MP4 or AVI.</li>
+                    <li><strong>Frame Extraction</strong>: The video is split into individual pictures (frames), like flipping through a photo album. We take up to 20 frames to keep things manageable.</li>
+                    <li><strong>Feature Extraction with InceptionV3 and TensorFlow</strong>: 
+                        <ul>
+                            <li><strong>InceptionV3</strong>: This is another convolutional neural network, even more advanced than ResNet18. It’s like a master artist who notices tiny details in each frame, such as inconsistent shadows or unnatural facial movements.</li>
+                            <li><strong>TensorFlow</strong>: We use TensorFlow again to power InceptionV3, ensuring it can process all the frames quickly and accurately.</li>
+                            <li><strong>Processing</strong>: Each frame is resized to 224x224 pixels and analyzed for features (like textures or edges) that might indicate a deepfake.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Video Analysis</strong>: We combine the features from all frames using another neural network that looks at the video as a whole. It checks for things like inconsistent motion or unnatural transitions between frames, which deepfakes often have.</li>
+                    <li><strong>Confidence Score</strong>: The system outputs a single score between 0 and 1. If it’s above 0.5, the video is labeled "Deepfake," and the confidence is the score itself (e.g., 0.8 = 80%). If it’s below 0.5, it’s "Real," and the confidence is 1 minus the score (e.g., 0.3 = 70% confidence for Real). This gives you a clear idea of how sure the system is.</li>
+                    <li><strong>Result</strong>: You see the result as "Real" (green) or "Deepfake" (red), with the confidence percentage. A high confidence (e.g., 90%) means strong certainty, while a lower one (e.g., 60%) means it’s less definitive.</li>
+                </ol>
+            </div>
+        </details>
+    </div>
+
+    <script src="{{ url_for('static', filename='scripts.js') }}?v=2"></script>
+</body>
+</html>

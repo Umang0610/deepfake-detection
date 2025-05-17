@@ -1,0 +1,17 @@
+Flask==3.0.3
+gunicorn==21.2.0
+matplotlib==3.9.2
+# Core ML
+tensorflow-cpu==2.18.0
+torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
+torchvision==0.17.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Image/Audio/Video Processing
+opencv-python-headless==4.8.0.76
+librosa==0.11.0
+pydub==0.25.1
+soundfile==0.12.1
+
+# Utilities
+numpy==1.26.4
+pillow==10.2.0
